@@ -1,104 +1,150 @@
 /*
-
-    maybe:
-    
-    if current character == letter or number{
-        if next character is also letter or number{
-            continue parsing token
-        }
-        else{
-            end token
-        }
-    }
-
-    else if current character == =,,,;,+,-,*,/,(,),<,>,{,} {
-        if current character == =, >, <, !, /, or * { //these can be the first of a multi-char token, such as >= or !=
-            if next character = the next char in a multi-char token{
-                parse it then end token
-            }
-            else{
-                not a multi-char token. end token
-            }
-        }
-
-    }
-
-    else if next character = space{
-        end token
-    }
-
+Current tasks/problems:
+    -use the .csv file
+    -use a struct (its like a record in ada)
 */
-
-
-//I should create a datatype that can handle
 
 
 #include <iostream>
 #include <string>
 #include <vector>
+#include <fstream>
 
 using namespace std;
 
-struct operator_data_type {
-    std::string operators = "=,+,-,*,/,<,>,!,%,^,&,|,~,<<,>>,==,!=,<=,>=,&&,||,++,--";
-    bool is_operator(char c) {
-        return operators.find(c) != std::string::npos;
-    }
-};
+vector<string> tokenizer(string input) {
+    vector<string> operators;
+    operators.push_back("=");
+    operators.push_back(",");
+    operators.push_back(";");
+    operators.push_back("+");
+    operators.push_back("-");
+    operators.push_back("*");
+    operators.push_back("/");
+    operators.push_back("(");
+    operators.push_back(")");
+    operators.push_back("<=");
+    operators.push_back(">=");
+    operators.push_back("==");
+    operators.push_back("!=");
+    operators.push_back("<");
+    operators.push_back(">");
+    operators.push_back("{");
+    operators.push_back("}");
+    operators.push_back("/*");
+    operators.push_back("*/");
 
-vector<string> tokenize(string input) {
-    operator_data_type op_type;
     vector<string> tokens;
-    string current_token = "";
-    for (int i = 0; i < input.size(); i++) {
-        char current_char = input[i];
+    string currentToken = "";
 
-        if (isalnum(current_char) || op_type.is_operator(current_char)) {
-            current_token += current_char;
-            if (i < input.size() - 1 && !isalnum(input[i + 1])) {
-                tokens.push_back(current_token);
-                current_token = "";
-            }
+    for (int i = 0; i < input.size(); i++) {
+        char currentChar = input[i];
+
+        if (isspace(currentChar)) {
+            continue;
         }
-        else if (current_char == '=' || current_char == ',' || current_char == ';' || current_char == '+' || current_char == '-' || current_char == '*' || current_char == '/' || current_char == '(' || current_char == ')' || current_char == '<' || current_char == '>' || current_char == '{' || current_char == '}') {
-            current_token += current_char;
-            if (current_char == '=' || current_char == '<' || current_char == '>' || current_char == '!' || current_char == '/' || current_char == '*') {
-                if (i < input.size() - 1) {
-                    char next_char = input[i + 1];
-                    if ((current_char == '=' && next_char == '=') || (current_char == '>' && next_char == '=') || (current_char == '<' && next_char == '=') || (current_char == '!' && next_char == '=') || (current_char == '/' && next_char == '*') || (current_char == '*' && next_char == '/')) {
-                        current_token += next_char;
-                        i++;
-                    }
+        else if (isalnum(currentChar)) {
+            currentToken = currentToken + currentChar;
+            while (i < input.size() - 1 && isalnum(input[i + 1])) {
+                currentToken = currentToken + input[i + 1];
+                i++;
+            }
+            bool foundOperator = false;
+            for (int j = 0; j < operators.size(); j++) {
+                if (currentToken == operators[j]) {
+                    foundOperator = true;
+                    break;
                 }
             }
-            tokens.push_back(current_token);
-            current_token = "";
+            if (foundOperator == false) {
+                tokens.push_back(currentToken);
+            }
+            currentToken = "";
         }
-        else if (i < input.size() - 1 && input[i + 1] == ' ') {
-            current_token += current_char;
-            tokens.push_back(current_token);
-            current_token = "";
+        else {
+            currentToken = currentToken + currentChar;
+            bool foundOperator = false;
+            for (int j = 0; j < operators.size(); j++) {
+                if (currentToken == operators[j]) {
+                    foundOperator = true;
+                    break;
+                }
+            }
+            if (foundOperator == false) {
+                if (i < input.size() - 1) {
+                    string combinedToken = currentToken + input[i + 1];
+                    bool foundCombinedOperator = false;
+                    for (int j = 0; j < operators.size(); j++) {
+                        if (combinedToken == operators[j]) {
+                            foundCombinedOperator = true;
+                            break;
+                        }
+                    }
+                    if (foundCombinedOperator) {
+                        currentToken = combinedToken;
+                        tokens.push_back(currentToken);
+                        currentToken = "";
+                        i++;
+                    }
+                    else {
+                        tokens.push_back(currentToken);
+                        currentToken = "";
+                    }
+                }
+                else {
+                    tokens.push_back(currentToken);
+                    currentToken = "";
+                }
+            }
+            else if (i < input.size() - 1) {
+                string combinedToken = currentToken + input[i + 1];
+                bool foundCombinedOperator = false;
+                for (int j = 0; j < operators.size(); j++) {
+                    if (combinedToken == operators[j]) {
+                        foundCombinedOperator = true;
+                        break;
+                    }
+                }
+                if (foundCombinedOperator) {
+                    currentToken = combinedToken;
+                    tokens.push_back(currentToken);
+                    currentToken = "";
+                    i++;
+                }
+                else {
+                    tokens.push_back(currentToken);
+                    currentToken = "";
+                }
+            }
+            else {
+                tokens.push_back(currentToken);
+                currentToken = "";
+            }
         }
     }
-    if (current_token != "") {
-        tokens.push_back(current_token);
+
+    if (currentToken != "") {
+        tokens.push_back(currentToken);
     }
+
     return tokens;
 }
 
 
-int main() {
-    string input;
-    cout << "Type your input: ";
-    getline(cin, input);
-    vector<string> printTokens;
-    printTokens = tokenize(input);
 
-    cout << "Tokens:\n";
-    for (const auto& token : printTokens) {
-        cout << token << "\n";
+int main() {
+    ifstream inputFile;
+    inputFile.open("inputfile.txt");
+
+    string input((istreambuf_iterator<char>(inputFile)), (istreambuf_iterator<char>())); //Reads input into string
+
+    inputFile.close();
+
+    vector<string> printTokens = tokenizer(input); //Feeds the string into the tokenizer
+    for (int i = 0; i < printTokens.size(); i++) {
+        cout << printTokens[i] << "\n";
     }
-    cout << endl;
 
     return 0;
 }
+
