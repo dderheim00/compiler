@@ -44,38 +44,31 @@ void readCSV(string csvFile, string kind){
     csvInputFile.close();
 }
 
-struct Symbol {
+struct TokensList {
     string token;
     string type;
-    string address;
-    string segment;
-    string value;
 };
 
-vector<Symbol> symbolTable; //define symbolTable as a vector of Symbol type
+vector<TokensList> tokensList; //defines tokensList as a vector of TokensList type
 
 void readTxt(string txtFile, string kind){
     ifstream txtInputFile(txtFile);
     if(txtInputFile.is_open()){
         string line;
         while(getline(txtInputFile, line)){ // Read each line of the input file
-            Symbol symbol;
+            TokensList tokenEntry;
             istringstream ss(line);
-            getline(ss, symbol.token, '\t'); // Read each column of the line and assign to corresponding symbol fields
-            getline(ss, symbol.type, '\t');
-            getline(ss, symbol.address, '\t');
-            getline(ss, symbol.segment, '\t');
-            getline(ss, symbol.value, '\t');
+            getline(ss, tokenEntry.token, '\t'); // Read each column of the line and assign to corresponding symbol fields
+            getline(ss, tokenEntry.type, '\t');
             if(kind == "tokens"){
-                // Add the symbol to the txtTokensList vector
-                //txtTokensList.push_back(symbol);
+                // Add the symbol to the tokensList vector
+                tokensList.push_back(tokenEntry);
             }
             else if(kind == "symbol"){
-                // Add the symbol to the symbolTable vector
-                symbolTable.push_back(symbol);
+                // Add the symbol to the tokensList vector
+                
             }
             else{
-                // Handle invalid kind input
                 cout << "Invalid input kind" << endl;
                 break;
             }
@@ -86,7 +79,7 @@ void readTxt(string txtFile, string kind){
 
 
 
-string quadGen(vector<Symbol> symbolTable) {
+string quadGen(vector<TokensList> symbolTable) {
     stack<string> myStack;
     int tableLocOfLastOp = 1;
     int tableLocOfCurrentOp = 1;
@@ -109,7 +102,6 @@ string quadGen(vector<Symbol> symbolTable) {
                 currentOp = token;
             }
             
-            
             if(currentOp == "⊥"){
                 tableLocOfCurrentOp = 1;
             } else if(currentOp == "="){
@@ -130,6 +122,22 @@ string quadGen(vector<Symbol> symbolTable) {
                 tableLocOfCurrentOp = 9;
             } else if(currentOp == "THEN"){
                 tableLocOfCurrentOp = 10;
+            } else if(currentOp == "=="){
+                tableLocOfCurrentOp = 11;
+            } else if(currentOp == "!="){
+                tableLocOfCurrentOp = 12;
+            } else if(currentOp == ">"){
+                tableLocOfCurrentOp = 13;
+            } else if(currentOp == "<"){
+                tableLocOfCurrentOp = 14;
+            } else if(currentOp == ">="){
+                tableLocOfCurrentOp = 15;
+            } else if(currentOp == "<="){
+                tableLocOfCurrentOp = 16;
+            } else if(currentOp == "{"){
+                tableLocOfCurrentOp = 17;
+            } else if(currentOp == "}"){
+                tableLocOfCurrentOp = 18;
             } else if(currentOp == ";"){
                 tableLocOfCurrentOp = 19;
             } else{
@@ -199,6 +207,30 @@ string quadGen(vector<Symbol> symbolTable) {
                             } else if(top == "THEN"){
                                 tableLocOfLastOp = 10;
                                 break;
+                            } else if(top == "=="){
+                                tableLocOfLastOp = 11;
+                                break;
+                            } else if(top == "!="){
+                                tableLocOfLastOp = 12;
+                                break;
+                            } else if(top == ">"){
+                                tableLocOfLastOp = 13;
+                                break;
+                            } else if(top == "<"){
+                                tableLocOfLastOp = 14;
+                                break;
+                            } else if(top == ">="){
+                                tableLocOfLastOp = 15;
+                                break;
+                            } else if(top == "<="){
+                                tableLocOfLastOp = 16;
+                                break;
+                            } else if(top == "{"){
+                                tableLocOfLastOp = 17;
+                                break;
+                            } else if(top == "}"){
+                                tableLocOfLastOp = 18;
+                                break;
                             } else if(top == ";"){
                                 tableLocOfLastOp = 19;
                                 break;
@@ -263,8 +295,48 @@ string quadGen(vector<Symbol> symbolTable) {
                                     parenthesesHit = true;
                                     break;
                                 } else if(lastOp == "THEN"){
-                                    tableLocOfLastOp = 9;
-                                    tableLocOfCurrentOp = 9;
+                                    tableLocOfLastOp = 10;
+                                    tableLocOfCurrentOp = 10;
+                                    parenthesesHit = true;
+                                    break;
+                                } else if(lastOp == "=="){
+                                    tableLocOfLastOp = 11;
+                                    tableLocOfCurrentOp = 11;
+                                    parenthesesHit = true;
+                                    break;
+                                } else if(lastOp == "!="){
+                                    tableLocOfLastOp = 12;
+                                    tableLocOfCurrentOp = 12;
+                                    parenthesesHit = true;
+                                    break;
+                                } else if(lastOp == ">"){
+                                    tableLocOfLastOp = 13;
+                                    tableLocOfCurrentOp = 13;
+                                    parenthesesHit = true;
+                                    break;
+                                } else if(lastOp == "<"){
+                                    tableLocOfLastOp = 14;
+                                    tableLocOfCurrentOp = 14;
+                                    parenthesesHit = true;
+                                    break;
+                                } else if(lastOp == ">="){
+                                    tableLocOfLastOp = 15;
+                                    tableLocOfCurrentOp = 15;
+                                    parenthesesHit = true;
+                                    break;
+                                } else if(lastOp == "<="){
+                                    tableLocOfLastOp = 16;
+                                    tableLocOfCurrentOp = 16;
+                                    parenthesesHit = true;
+                                    break;
+                                } else if(lastOp == "{"){
+                                    tableLocOfLastOp = 17;
+                                    tableLocOfCurrentOp = 17;
+                                    parenthesesHit = true;
+                                    break;
+                                } else if(lastOp == "}"){
+                                    tableLocOfLastOp = 18;
+                                    tableLocOfCurrentOp = 18;
                                     parenthesesHit = true;
                                     break;
                                 } else if(lastOp == ";"){
@@ -338,7 +410,7 @@ int main() {
     readTxt("tokensList.txt", "tokens");
     readTxt("symbolTable.txt", "symbol");
 
-    string outputQuad = quadGen(symbolTable);
+    string outputQuad = quadGen(tokensList);
     cout << outputQuad << endl;
 
     assemblyConvert(outputQuad);
