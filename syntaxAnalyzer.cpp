@@ -87,8 +87,7 @@ void readTxt(string txtFile, string kind){
 
 
 string quadGen(vector<Symbol> symbolTable) {
-    stack<string> opStack;
-    stack<string> valStack;
+    stack<string> myStack;
     int tableLocOfLastOp = 1;
     int tableLocOfCurrentOp = 1;
     string quad = "";
@@ -102,123 +101,232 @@ string quadGen(vector<Symbol> symbolTable) {
         token = symbolTable[i].token;
 
         if (token == "=" || token == "+" || token == "-" || token == "(" || token == ")" || token == "*" || token == "/" || token == "IF" || token == "THEN" || token == "==" || token == "!=" || token == ">" || token == "<" || token == ">=" || token == "<=" || token == "{" || token == "}" || token == ";") {
-            lastOp = currentOp;
-            currentOp = token;
-
-            if(currentOp == "⊥"){
-                tableLocOfCurrentOp = 1;
-            }
-            else if(currentOp == "="){
-                tableLocOfCurrentOp = 2;
-            }
-            else if(currentOp == "+"){
-                tableLocOfCurrentOp = 3;
-            }
-            else if(currentOp == "-"){
-                tableLocOfCurrentOp = 4;
-            }
-            else if(currentOp == "("){
-                tableLocOfCurrentOp = 5;
-            }
-            else if(currentOp == ")"){
-                tableLocOfCurrentOp = 6;
-            }
-            else if(currentOp == "*"){
-                tableLocOfCurrentOp = 7;
-            }
-            else if(currentOp == "/"){
-                tableLocOfCurrentOp = 8;
-            }
-            else if(currentOp == ";"){
-                tableLocOfCurrentOp = 19;
+            if(currentOp == ")"){
+                currentOp = token;
             }
             else{
+                lastOp = currentOp;
+                currentOp = token;
+            }
+            
+            
+            if(currentOp == "⊥"){
+                tableLocOfCurrentOp = 1;
+            } else if(currentOp == "="){
+                tableLocOfCurrentOp = 2;
+            } else if(currentOp == "+"){
+                tableLocOfCurrentOp = 3;
+            } else if(currentOp == "-"){
+                tableLocOfCurrentOp = 4;
+            } else if(currentOp == "("){
+                tableLocOfCurrentOp = 5;
+            } else if(currentOp == ")"){ //this block never gets reached
+                tableLocOfCurrentOp = 6;
+            } else if(currentOp == "*"){
+                tableLocOfCurrentOp = 7;
+            } else if(currentOp == "/"){
+                tableLocOfCurrentOp = 8;
+            } else if(currentOp == "IF"){
+                tableLocOfCurrentOp = 9;
+            } else if(currentOp == "THEN"){
+                tableLocOfCurrentOp = 10;
+            } else if(currentOp == ";"){
+                tableLocOfCurrentOp = 19;
+            } else{
                 cout << "Invalid operator" << endl;
             }
             //do for the rest of the operators when the time comes
 
-
             string precedence = string(1, csvPrec[tableLocOfLastOp][tableLocOfCurrentOp][0]);
-            
-            //PROBLEM LIES IN THIS 'IF'
-            if (precedence[0] == 60 || precedence[0] == 61) { //if precedence == "<" or "="
-                opStack.push(token);
+            if(precedence[0] == 60 || precedence[0] == 61){ //if precedence == "<" or "="
+                myStack.push(token);
                 tableLocOfLastOp = tableLocOfCurrentOp;
             }
             else if(precedence[0] == 62) { //if precedence == ">"
                 bool tokenPushed = false;
-                while(!opStack.empty() && (csvPrec[tableLocOfLastOp][tableLocOfCurrentOp][0] == '>' || csvPrec[tableLocOfLastOp][tableLocOfCurrentOp][0] == '=')){
-                    if(opStack.top() == "=" && currentOp == ";"){ //maybe add && opStack.size() == 2
-                        string rightOperand = valStack.top();
-                        valStack.pop();
-                        string leftOperand = valStack.top();
-                        valStack.pop();
-                        quad += opStack.top() + ", " + leftOperand + ", " + rightOperand + "\n";
-                        opStack.pop();
+                bool parenthesesHit = false;
+
+                while(!myStack.empty() && (csvPrec[tableLocOfLastOp][tableLocOfCurrentOp][0] == '>')){
+                    if(myStack.size() == 3 && currentOp == ";"){ //maybe add && myStack.size() == 2
+                        string rightOperand = myStack.top();
+                        myStack.pop();
+                        string op = myStack.top();
+                        myStack.pop();
+                        string leftOperand = myStack.top();
+                        myStack.pop();
+                        quad += op + ", " + leftOperand + ", " + rightOperand + "\n";
                     }
                     else{
                         string tempVar = "T" + to_string(++tempVarCount);
-                        string rightOperand = valStack.top();
-                        valStack.pop();
-                        string leftOperand = valStack.top();
-                        valStack.pop();
-                        quad += opStack.top() + ", " + leftOperand + ", " + rightOperand + ", " + tempVar + "\n";
-                        valStack.push(tempVar);
-                        opStack.pop();
-                        int tableLocOfStackTop = 1; //initialize to default value
-                        if(!opStack.empty()){
-                            string topOp = opStack.top();
-                            if (topOp == "⊥") {
-                                tableLocOfStackTop = 1;
-                            } else if (topOp == "=") {
-                                tableLocOfStackTop = 2;
-                            } else if (topOp == "+") {
-                                tableLocOfStackTop = 3;
-                            } else if (topOp == "-") {
-                                tableLocOfStackTop = 4;
-                            } else if (topOp == "(") {
-                                tableLocOfStackTop = 5;
-                            } else if (topOp == ")") {
-                                tableLocOfStackTop = 6;
-                            } else if (topOp == "*") {
-                                tableLocOfStackTop = 7;
-                            } else if (topOp == "/") {
-                                tableLocOfStackTop = 8;
-                            } else if (topOp == ";") {
-                                tableLocOfStackTop = 19;
-                            } else {
-                                cout << "Invalid operator" << endl;
+                        string rightOperand = myStack.top();
+                        myStack.pop();
+                        string op = myStack.top(); //operator goes here instead
+                        myStack.pop();
+                        string leftOperand = myStack.top();
+                        myStack.pop();
+                        myStack.push(tempVar);
+                        quad += op + ", " + leftOperand + ", " + rightOperand + ", " + tempVar + "\n";
+
+                        stack<string> tempStack; // Create a temporary stack to find the operator
+                        tempStack = myStack;
+                        while (!tempStack.empty()) {
+                            string top = tempStack.top();
+                            tempStack.pop();
+                            if(top == "="){
+                                tableLocOfLastOp = 2;
+                                break;
+                            } else if(top == "+"){
+                                tableLocOfLastOp = 3;
+                                break;
+                            } else if(top == "-"){
+                                tableLocOfLastOp = 4;
+                                break;
+                            } else if(top == "("){
+                                tableLocOfLastOp = 5;
+                                break;
+                            } else if(top == ")"){
+                                tableLocOfLastOp = 6;
+                                break;
+                            } else if(top == "*"){
+                                tableLocOfLastOp = 7;
+                                break;
+                            } else if(top == "/"){
+                                tableLocOfLastOp = 8;
+                                break;
+                            } else if(top == "IF"){
+                                tableLocOfLastOp = 9;
+                                break;
+                            } else if(top == "THEN"){
+                                tableLocOfLastOp = 10;
+                                break;
+                            } else if(top == ";"){
+                                tableLocOfLastOp = 19;
+                                break;
+                            } else{
+
                             }
                         }
-                        tableLocOfLastOp = tableLocOfStackTop;
+                        while(!tempStack.empty()){
+                            tempStack.pop();
+                        }
+
                         precedence = string(1, csvPrec[tableLocOfLastOp][tableLocOfCurrentOp][0]);
-                        if(tokenPushed == false && precedence[0] != 62){
-                            if(!opStack.empty() && currentOp != ";"){
-                                opStack.push(token); //same token gets pushed multiple times deswegen the while loop?
-                                tokenPushed = true;
+                        if(tokenPushed == false && precedence[0] != 62 && !myStack.empty() && currentOp != ";"){                         
+                            myStack.push(token);
+                            tokenPushed = true;
+                            if(myStack.top() == ")" && !myStack.empty()){
+                                myStack.pop();
+                                string varInsideParentheses;
+                                varInsideParentheses = myStack.top();
+                                myStack.pop();
+                                myStack.pop();
+                                lastOp = myStack.top();
+                                myStack.push(varInsideParentheses);
+                                if(lastOp == "="){
+                                    tableLocOfLastOp = 2;
+                                    tableLocOfCurrentOp = 2;
+                                    parenthesesHit = true;
+                                    break;
+                                } else if(lastOp == "+"){
+                                    tableLocOfLastOp = 3;
+                                    tableLocOfCurrentOp = 3;
+                                    parenthesesHit = true;
+                                    break;
+                                } else if(lastOp == "-"){
+                                    tableLocOfLastOp = 4;
+                                    tableLocOfCurrentOp = 4;
+                                    parenthesesHit = true;
+                                    break;
+                                } else if(lastOp == "("){
+                                    tableLocOfLastOp = 5;
+                                    tableLocOfCurrentOp = 5;
+                                    parenthesesHit = true;
+                                    break;
+                                } else if(lastOp == ")"){
+                                    tableLocOfLastOp = 6;
+                                    tableLocOfCurrentOp = 6;
+                                    parenthesesHit = true;
+                                    break;
+                                } else if(lastOp == "*"){
+                                    tableLocOfLastOp = 7;
+                                    tableLocOfCurrentOp = 7;
+                                    parenthesesHit = true;
+                                    break;
+                                } else if(lastOp == "/"){
+                                    tableLocOfLastOp = 8;
+                                    tableLocOfCurrentOp = 8;
+                                    parenthesesHit = true;
+                                    break;
+                                } else if(lastOp == "IF"){
+                                    tableLocOfLastOp = 9;
+                                    tableLocOfCurrentOp = 9;
+                                    parenthesesHit = true;
+                                    break;
+                                } else if(lastOp == "THEN"){
+                                    tableLocOfLastOp = 9;
+                                    tableLocOfCurrentOp = 9;
+                                    parenthesesHit = true;
+                                    break;
+                                } else if(lastOp == ";"){
+                                    tableLocOfLastOp = 19;
+                                    tableLocOfCurrentOp = 19;
+                                    parenthesesHit = true;
+                                    break;
+                                } else{
+                                }
                             }
                         }
                     } //end else
-
                 } //end while
-
-                tableLocOfLastOp = tableLocOfCurrentOp;
+                if(parenthesesHit == false){
+                    tableLocOfLastOp = tableLocOfCurrentOp;
+                }
             } //end else if(precedence ">")
-
             else {
                 cout << "Invalid operator precedence" << endl;
-                invalid = true;
+                invalid = true; //variable for debugging. does not serve a logical function
             }
-
-        }
-        else{
-            valStack.push(token);
+        } //end if operator check
+        else{ //is not an operator
+            myStack.push(token);
         }
     }
 
     return quad;
 }
 
+
+
+void assemblyConvert(string outputQuad) {
+    istringstream ss(outputQuad);
+    string line;
+
+    while (getline(ss, line)) {
+        string op, leftOperand, rightOperand, result;
+        istringstream ss_line(line);
+
+        getline(ss_line, op, ',');
+        getline(ss_line >> std::ws, leftOperand, ',');
+        getline(ss_line >> std::ws, rightOperand, ',');
+        getline(ss_line >> std::ws, result);
+
+        if (op == "+") {
+            cout << "ADD " << leftOperand << ", " << rightOperand << ", " << result << endl;
+        }
+        else if (op == "-") {
+            cout << "SUB " << leftOperand << ", " << rightOperand << ", " << result << endl;
+        }
+        else if (op == "*") {
+            cout << "MUL " << leftOperand << ", " << rightOperand << ", " << result << endl;
+        }
+        else if (op == "/") {
+            cout << "DIV " << leftOperand << ", " << rightOperand << ", " << result << endl;
+        }
+        else if (op == "=") {
+            cout << "MOV " << leftOperand << ", " << rightOperand << endl;
+        }
+    }
+}
 
 
 
@@ -231,7 +339,9 @@ int main() {
     readTxt("symbolTable.txt", "symbol");
 
     string outputQuad = quadGen(symbolTable);
-    cout << outputQuad;
+    cout << outputQuad << endl;
+
+    assemblyConvert(outputQuad);
 
     return 0;
 }
