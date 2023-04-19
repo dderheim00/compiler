@@ -1,8 +1,6 @@
 /*
 Problems:
-
-$CLASS and the class name both need to be in the CS segment. is that the case?
-need to make it so that variables contain their initial values?
+Do I need to add CONST and VAR to the "type" section of a variable here? If so, do I then exclude that keyword from the symbol table?
 */
 
 
@@ -301,35 +299,7 @@ struct Symbol {
     string segment;
     string value;
 };
-// vector<Symbol> createSymbolTable(vector<pair<string, string> > tokens) {
-//     vector<Symbol> symbolTable;
 
-//     // iterate over each token
-//     int address = 0;
-//     for (int i = 0; i < tokens.size(); i++) {
-//         string tokenStr = tokens[i].first;
-//         string typeStr = tokens[i].second;
-//         string addressStr = to_string(address);
-//         string val = "";
-
-//         // create a new symbol and add it to the symbol table
-//         if(typeStr == "$CLASS"){
-//             //exlude $CLASS from symbol table
-//         }
-//         else if(typeStr == "PGM NAME"){
-//             Symbol symbol = {tokenStr, typeStr, addressStr, "CS", ""};
-//             symbolTable.push_back(symbol);
-//         }
-//         else{
-//             Symbol symbol = {tokenStr, typeStr, addressStr, "DS", val};
-//             symbolTable.push_back(symbol);
-//             address = address + 2;
-//         }
-
-//     }
-
-//     return symbolTable;
-// }
 vector<Symbol> createSymbolTable(vector<pair<string, string> > tokens) {
     vector<Symbol> symbolTable;
 
@@ -342,8 +312,8 @@ vector<Symbol> createSymbolTable(vector<pair<string, string> > tokens) {
         string val = "";
 
         // create a new symbol and add it to the symbol table
-        if(typeStr == "$CLASS"){
-            //exlude $CLASS from symbol table
+        if(typeStr == "$CLASS" || tokenStr == "+" || tokenStr == "-" || tokenStr == "(" || tokenStr == ")" || tokenStr == "*" || tokenStr == "/" || tokenStr == "IF" || tokenStr == "THEN" || tokenStr == "==" || tokenStr == "!=" || tokenStr == ">" || tokenStr == "<" || tokenStr == ">=" || tokenStr == "<=" || tokenStr == "{" || tokenStr == "}"){
+            //exlude from symbol table
         }
         else if(typeStr == "PGM NAME"){
             Symbol symbol = {tokenStr, typeStr, addressStr, "CS", ""};
@@ -351,21 +321,44 @@ vector<Symbol> createSymbolTable(vector<pair<string, string> > tokens) {
         }
         else{
             // check if token is a number
-            bool isNumber = true;
+            bool isNumber = false;
             for (char c : tokenStr) {
-                if (!isdigit(c)) {
-                    isNumber = false;
+                if (isdigit(c)) {
+                    isNumber = true;
                     break;
                 }
             }
-            if (isNumber) {
+            if(isNumber){
                 val = tokenStr;
             }
-            Symbol symbol = {tokenStr, typeStr, addressStr, "DS", val};
-            symbolTable.push_back(symbol);
-            address = address + 2;
+
+            if(tokens[i].first == ";" && isdigit(static_cast<int>(tokens[i-1].first[0])) && tokens[i-2].first == "="){
+                string initialValue = "";
+                initialValue = symbolTable.back().value;
+                symbolTable.pop_back();
+                symbolTable.pop_back();
+                symbolTable.back().value = initialValue;
+            }
+
+            string tokensfirst = tokens[i].first;
+            string tokensfirstminus3 = tokens[i-3].first;
+            bool initialValueSet;
+            if (tokens[i].first != ";"){
+                Symbol symbol = {tokenStr, typeStr, addressStr, "DS", val};
+                symbolTable.push_back(symbol);
+                address = address + 2;
+            }
+
         }
 
+    }
+    for(auto it = symbolTable.begin(); it != symbolTable.end(); ){
+        if (it->token == "=") {
+            it = symbolTable.erase(it);
+        }
+        else{
+            ++it;
+        }
     }
 
     return symbolTable;
