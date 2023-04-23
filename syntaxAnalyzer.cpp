@@ -1,3 +1,10 @@
+/*
+Problems:
+For assembly generation, I CAN use the variable names as long as their addresses are in the .data section
+For CONST, to make sure the value doesn't change, have to make sure that it doesn't appear on the lefthand side of an assignment statement
+Make {} the delimiter for a 'then' conditional
+*/
+
 #include <iostream>
 #include <string>
 #include <vector> //for reading in files
@@ -88,11 +95,16 @@ string quadGen(vector<TokensList> symbolTable) {
     int tempVarCount = 0;
     string lastOp = "⊥";
     string currentOp = "⊥";
-    bool invalid;
+    bool invalid; //for testing
+    bool conditionalStatement = false;
+    bool isConstOrVar = false;
 
     for (int i = 0; i < symbolTable.size(); i++) {
         token = symbolTable[i].token;
 
+        if(token == "CONST" || token == "VAR"){
+            isConstOrVar = true;
+        }
         if (token == "=" || token == "+" || token == "-" || token == "(" || token == ")" || token == "*" || token == "/" || token == "IF" || token == "THEN" || token == "==" || token == "!=" || token == ">" || token == "<" || token == ">=" || token == "<=" || token == "{" || token == "}" || token == ";") {
             if(currentOp == ")"){
                 currentOp = token;
@@ -122,6 +134,7 @@ string quadGen(vector<TokensList> symbolTable) {
                 tableLocOfCurrentOp = 9;
             } else if(currentOp == "THEN"){
                 tableLocOfCurrentOp = 10;
+                conditionalStatement = true;
             } else if(currentOp == "=="){
                 tableLocOfCurrentOp = 11;
             } else if(currentOp == "!="){
@@ -143,7 +156,6 @@ string quadGen(vector<TokensList> symbolTable) {
             } else{
                 cout << "Invalid operator" << endl;
             }
-            //do for the rest of the operators when the time comes
 
             string precedence = string(1, csvPrec[tableLocOfLastOp][tableLocOfCurrentOp][0]);
             if(precedence[0] == 60 || precedence[0] == 61){ //if precedence == "<" or "="
@@ -155,7 +167,7 @@ string quadGen(vector<TokensList> symbolTable) {
                 bool parenthesesHit = false;
 
                 while(!myStack.empty() && (csvPrec[tableLocOfLastOp][tableLocOfCurrentOp][0] == '>')){
-                    if(myStack.size() == 3 && currentOp == ";"){ //maybe add && myStack.size() == 2
+                    if((myStack.size() == 3 && currentOp == ";") || (myStack.size() == 4 && currentOp == ";" && isConstOrVar == true)){
                         string rightOperand = myStack.top();
                         myStack.pop();
                         string op = myStack.top();
@@ -163,18 +175,43 @@ string quadGen(vector<TokensList> symbolTable) {
                         string leftOperand = myStack.top();
                         myStack.pop();
                         quad += op + ", " + leftOperand + ", " + rightOperand + "\n";
+                        if(isConstOrVar == true){
+                            myStack.pop();
+                            isConstOrVar = false;
+                        }
                     }
                     else{
-                        string tempVar = "T" + to_string(++tempVarCount);
-                        string rightOperand = myStack.top();
-                        myStack.pop();
-                        string op = myStack.top(); //operator goes here instead
-                        myStack.pop();
-                        string leftOperand = myStack.top();
-                        myStack.pop();
-                        myStack.push(tempVar);
-                        quad += op + ", " + leftOperand + ", " + rightOperand + ", " + tempVar + "\n";
-
+                        if(tableLocOfLastOp == 2){
+                            string rightOperand = myStack.top();
+                            myStack.pop();
+                            string op = myStack.top();
+                            myStack.pop();
+                            string leftOperand = myStack.top();
+                            myStack.pop();
+                            quad += op + ", " + leftOperand + ", " + rightOperand + "\n";
+                        }
+                        else if(lastOp != "==" && lastOp != "!=" && lastOp != ">" && lastOp != "<" && lastOp != ">=" && lastOp != "<="){
+                            string tempVar = "T" + to_string(++tempVarCount);
+                            string rightOperand = myStack.top();
+                            myStack.pop();
+                            string op = myStack.top();
+                            myStack.pop();
+                            string leftOperand = myStack.top();
+                            myStack.pop();
+                            myStack.push(tempVar);
+                            quad += op + ", " + leftOperand + ", " + rightOperand + ", " + tempVar + "\n";
+                        }
+                        else{ //if relop
+                            string rightOperand = myStack.top();
+                            myStack.pop();
+                            string op = myStack.top();
+                            myStack.pop();
+                            string leftOperand = myStack.top();
+                            myStack.pop();
+                            quad += op + ", " + leftOperand + ", " + rightOperand + "\n";
+                            conditionalStatement = true;
+                        }
+                        
                         stack<string> tempStack; // Create a temporary stack to find the operator
                         tempStack = myStack;
                         while (!tempStack.empty()) {
@@ -240,6 +277,14 @@ string quadGen(vector<TokensList> symbolTable) {
                         }
                         while(!tempStack.empty()){
                             tempStack.pop();
+                        }
+
+                        if(myStack.size() == 2 && myStack.top() == "THEN"){
+                            myStack.pop();
+                            myStack.pop();
+                            tableLocOfLastOp = 1;
+                            conditionalStatement = false;
+                            quad += "nop\n";
                         }
 
                         precedence = string(1, csvPrec[tableLocOfLastOp][tableLocOfCurrentOp][0]);
@@ -382,20 +427,67 @@ void assemblyConvert(string outputQuad) {
         getline(ss_line >> std::ws, rightOperand, ',');
         getline(ss_line >> std::ws, result);
 
-        if (op == "+") {
-            cout << "ADD " << leftOperand << ", " << rightOperand << ", " << result << endl;
+        if(op == "="){
+            cout << "mov ax,[" << rightOperand << "]" << endl;
+            cout << "mov [" << leftOperand << "],ax" << endl;
         }
-        else if (op == "-") {
-            cout << "SUB " << leftOperand << ", " << rightOperand << ", " << result << endl;
+        else if(op == "nop"){
+            cout << "nop" << endl;
         }
-        else if (op == "*") {
-            cout << "MUL " << leftOperand << ", " << rightOperand << ", " << result << endl;
+        else if(op == "+"){
+            cout << "mov ax,[" << leftOperand << "]" << endl;
+            cout << "add ax,[" << rightOperand << "]" << endl;
+            cout << "mov [" << result << "],ax" << endl;
         }
-        else if (op == "/") {
-            cout << "DIV " << leftOperand << ", " << rightOperand << ", " << result << endl;
+        else if(op == "-"){
+            cout << "mov ax,[" << leftOperand << "]" << endl;
+            cout << "sub ax,[" << rightOperand << "]" << endl;
+            cout << "mov [" << result << "],ax" << endl;
         }
-        else if (op == "=") {
-            cout << "MOV " << leftOperand << ", " << rightOperand << endl;
+        else if(op == "*"){
+            cout << "mov ax,[" << leftOperand << "]" << endl;
+            cout << "mul [" << rightOperand << "]" << endl;
+            cout << "mov [" << result << "],ax" << endl;
+        }
+        else if(op == "/"){
+            cout << "mov dx,0" << endl;
+            cout << "mov ax,[" << leftOperand << "]" << endl;
+            cout << "mov bx,[" << rightOperand << "]" << endl;
+            cout << "div bx" << endl;
+            cout << "mov [" << result << "],ax" << endl;
+        }
+        else if(op == "=="){
+            cout << "mov ax,[" << leftOperand << "]" << endl;
+            cout << "cmp ax,[" << rightOperand << "]" << endl;
+            cout << "JLE " << "L1" << endl; //If comparison is FALSE, skip to location L1. Need to make it so that L1 is not hard coded
+        }
+        else if(op == "!="){
+            cout << "mov ax,[" << leftOperand << "]" << endl;
+            cout << "cmp ax,[" << rightOperand << "]" << endl;
+            cout << "JLE " << "L1" << endl; //If comparison is FALSE, skip to location L1. Need to make it so that L1 is not hard coded
+        }
+        else if(op == ">"){
+            cout << "mov ax,[" << leftOperand << "]" << endl;
+            cout << "cmp ax,[" << rightOperand << "]" << endl;
+            cout << "JLE " << "L1" << endl; //If comparison is FALSE, skip to location L1. Need to make it so that L1 is not hard coded
+        }
+        else if(op == "<"){
+            cout << "mov ax,[" << leftOperand << "]" << endl;
+            cout << "cmp ax,[" << rightOperand << "]" << endl;
+            cout << "JLE " << "L1" << endl; //If comparison is FALSE, skip to location L1. Need to make it so that L1 is not hard coded
+        }
+        else if(op == ">="){
+            cout << "mov ax,[" << leftOperand << "]" << endl;
+            cout << "cmp ax,[" << rightOperand << "]" << endl;
+            cout << "JLE " << "L1" << endl; //If comparison is FALSE, skip to location L1. Need to make it so that L1 is not hard coded
+        }
+        else if(op == "<="){
+            cout << "mov ax,[" << leftOperand << "]" << endl;
+            cout << "cmp ax,[" << rightOperand << "]" << endl;
+            cout << "JLE " << "L1" << endl; //If comparison is FALSE, skip to location L1. Need to make it so that L1 is not hard coded
+        }
+        else if (op == "}"){
+            cout << "END " << "programname" << endl;
         }
     }
 }
