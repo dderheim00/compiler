@@ -1,6 +1,6 @@
 /*
 Problems:
-Do I need to add CONST and VAR to the "type" section of a variable here? If so, do I then exclude that keyword from the symbol table?
+
 */
 
 
@@ -179,7 +179,7 @@ vector<pair<string, string> > tokenizer(string input){
                 break;
 
             case '*':
-                if(comment == true){
+                if((comment == true) && (input[i+1] == '/')){
                     column = 8;
                     int m;
                     m = i + 1;
@@ -192,7 +192,9 @@ vector<pair<string, string> > tokenizer(string input){
                     }
                 }
                 else{
-                    tokens.push_back(pair<string, string>("*", csvData[10][column]));
+                    if(comment == false){
+                        tokens.push_back(pair<string, string>("*", csvData[10][column]));
+                    }
                 }
                 break;
                 
@@ -232,7 +234,8 @@ vector<pair<string, string> > tokenizer(string input){
                     int p;
                     p = i + 1;
                     if(p < input.size() && input[p] == '='){
-                        tokens.push_back(pair<string, string>("<=", csvData[17][column]));
+                        tokens.push_back(pair<string, string>("!=", csvData[17][column]));
+                        i = p; //skips the second symbol
                     }
                     else{
                         cout << "Error: ! without =";
@@ -245,7 +248,7 @@ vector<pair<string, string> > tokenizer(string input){
                 if(comment == false){
                     column = 13;
                     int q;
-                    j = i + 1;
+                    q = i + 1;
                     if(q < input.size() && input[q] == '='){
                         tokens.push_back(pair<string, string>("<=", csvData[14][column]));
                         i = q; //skips the second symbol
@@ -300,19 +303,29 @@ struct Symbol {
     string value;
 };
 
-vector<Symbol> createSymbolTable(vector<pair<string, string> > tokens) {
+bool symbolExists(vector<Symbol>& symbolTable, string token){
+    for(Symbol& symbol : symbolTable){
+        if(symbol.token == token){
+            return true;
+        }
+    }
+    return false;
+}
+
+vector<Symbol> createSymbolTable(vector<pair<string, string> > tokens){
     vector<Symbol> symbolTable;
 
-    // iterate over each token
     int address = 0;
-    for (int i = 0; i < tokens.size(); i++) {
+    bool initialValue = false;
+
+    for(int i = 0; i < tokens.size(); i++){
         string tokenStr = tokens[i].first;
         string typeStr = tokens[i].second;
         string addressStr = to_string(address);
         string val = "";
-
-        // create a new symbol and add it to the symbol table
-        if(typeStr == "$CLASS" || tokenStr == "+" || tokenStr == "-" || tokenStr == "(" || tokenStr == ")" || tokenStr == "*" || tokenStr == "/" || tokenStr == "IF" || tokenStr == "THEN" || tokenStr == "==" || tokenStr == "!=" || tokenStr == ">" || tokenStr == "<" || tokenStr == ">=" || tokenStr == "<=" || tokenStr == "{" || tokenStr == "}"){
+        
+        //creates a new symbol and adds it to the symbol table
+        if(typeStr == "$CLASS" || typeStr == "$VAR" || typeStr == "$CONST" || tokenStr == "=" || tokenStr == "+" || tokenStr == "-" || tokenStr == "(" || tokenStr == ")" || tokenStr == "*" || tokenStr == "/" || tokenStr == "IF" || tokenStr == "THEN" || tokenStr == "==" || tokenStr == "!=" || tokenStr == ">" || tokenStr == "<" || tokenStr == ">=" || tokenStr == "<=" || tokenStr == "{" || tokenStr == "}" || tokenStr == ";"){
             //exlude from symbol table
         }
         else if(typeStr == "PGM NAME"){
@@ -320,40 +333,62 @@ vector<Symbol> createSymbolTable(vector<pair<string, string> > tokens) {
             symbolTable.push_back(symbol);
         }
         else{
-            // check if token is a number
-            bool isNumber = false;
-            for (char c : tokenStr) {
-                if (isdigit(c)) {
-                    isNumber = true;
-                    break;
+            if(initialValue == true){
+                initialValue = false;
+            }
+            else{
+                //checks if token is a number
+                bool isNumber = false;
+                for(char c : tokenStr){
+                    if(isdigit(c)){
+                        isNumber = true;
+                        break;
+                    }
                 }
-            }
-            if(isNumber){
-                val = tokenStr;
-            }
+                if(isNumber){
+                    val = tokenStr;
+                }
+                initialValue = false;
 
-            if(tokens[i].first == ";" && isdigit(static_cast<int>(tokens[i-1].first[0])) && tokens[i-2].first == "="){
-                string initialValue = "";
-                initialValue = symbolTable.back().value;
-                symbolTable.pop_back();
-                symbolTable.pop_back();
-                symbolTable.back().value = initialValue;
-            }
+                //CONST handling and initial value for CONST
+                if(tokens[i-1].first == "CONST" && tokens[i+1].first == "=" && isdigit(static_cast<int>(tokens[i+2].first[0]))){
+                        Symbol symbol = {tokenStr, "CONST", addressStr, "DS", tokens[i+2].first};
+                        symbolTable.push_back(symbol);
+                        address = address + 2;
+                }
 
-            string tokensfirst = tokens[i].first;
-            string tokensfirstminus3 = tokens[i-3].first;
-            bool initialValueSet;
-            if (tokens[i].first != ";"){
-                Symbol symbol = {tokenStr, typeStr, addressStr, "DS", val};
-                symbolTable.push_back(symbol);
-                address = address + 2;
+                //adds token to symbol table
+                else if(isNumber == true){
+                    if(!symbolExists(symbolTable, tokenStr)){
+                        Symbol symbol = {tokenStr, "NUM LIT", addressStr, "DS", val};
+                        symbolTable.push_back(symbol);
+                        address = address + 2;
+                    }
+                }
+                else{
+                    if(!symbolExists(symbolTable, tokenStr)){
+                        //handles inital value for VAR
+                        if(tokens[i+1].first == "=" && isdigit(static_cast<int>(tokens[i+2].first[0])) && tokens[i+3].first == ";"){
+                            Symbol symbol = {tokenStr, "VAR", addressStr, "DS", tokens[i+2].first};
+                            symbolTable.push_back(symbol);
+                            address = address + 2;
+                            initialValue = true;
+                        }
+                        else{
+                            Symbol symbol = {tokenStr, "VAR", addressStr, "DS", val};
+                            symbolTable.push_back(symbol);
+                            address = address + 2;
+                        }
+                    }
+                    
+                }
             }
 
         }
 
     }
     for(auto it = symbolTable.begin(); it != symbolTable.end(); ){
-        if (it->token == "=") {
+        if(it->token == "="){
             it = symbolTable.erase(it);
         }
         else{
@@ -384,14 +419,14 @@ int main(){
 
     // Output to tokensList.txt
     ofstream tokensFile("tokensList.txt");
-    for (const auto& tokenPair : tokensList) {
+    for(const auto& tokenPair : tokensList){
         tokensFile << tokenPair.first << "\t" << " : " << "\t" << tokenPair.second << endl;
     }
     tokensFile.close();
 
     // Output to symbolTable.txt
     ofstream symbolTableFile("symbolTable.txt");
-    for (const auto& symbol : symbolTableResult) {
+    for(const auto& symbol : symbolTableResult){
         symbolTableFile << symbol.token << "\t" << symbol.type << "\t" << symbol.address << "\t" << symbol.segment << "\t" << symbol.value << endl;
     }
     symbolTableFile.close();
