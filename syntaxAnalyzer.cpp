@@ -1,10 +1,3 @@
-/*
-Problems:
-For assembly generation, I CAN use the variable names as long as their addresses are in the .data section
-For CONST, to make sure the value doesn't change, have to make sure that it doesn't appear on the lefthand side of an assignment statement
-Make {} the delimiter for a 'then' conditional
-*/
-
 #include <iostream>
 #include <string>
 #include <vector> //for reading in files
@@ -22,9 +15,9 @@ vector<vector<string> > csvPrec;
 
 void readCSV(string csvFile, string kind){
     ifstream csvInputFile(csvFile);
-    if(csvInputFile.is_open()) {
+    if(csvInputFile.is_open()){
         string temp;
-        while(getline(csvInputFile, temp)) {
+        while(getline(csvInputFile, temp)){
             vector<string> row;
             stringstream strsrm(temp);
             string cell;
@@ -35,7 +28,7 @@ void readCSV(string csvFile, string kind){
                 csvData.push_back(row);
             }
             else if(kind == "Reserved"){
-                for (int i = 0; i < row.size(); i++) {
+                for(int i = 0; i < row.size(); i++){
                     string j = row[i];
                     csvRW.push_back(j);
                 }
@@ -51,29 +44,42 @@ void readCSV(string csvFile, string kind){
     csvInputFile.close();
 }
 
-struct TokensList {
+struct TokensList{
     string token;
     string type;
 };
-
 vector<TokensList> tokensList; //defines tokensList as a vector of TokensList type
+
+struct SymbolTable {
+    string token;
+    string type;
+    string address;
+    string segment;
+    string value;
+};
+vector<SymbolTable> symbolTable;
 
 void readTxt(string txtFile, string kind){
     ifstream txtInputFile(txtFile);
     if(txtInputFile.is_open()){
         string line;
-        while(getline(txtInputFile, line)){ // Read each line of the input file
-            TokensList tokenEntry;
-            istringstream ss(line);
-            getline(ss, tokenEntry.token, '\t'); // Read each column of the line and assign to corresponding symbol fields
-            getline(ss, tokenEntry.type, '\t');
+        while(getline(txtInputFile, line)){
             if(kind == "tokens"){
-                // Add the symbol to the tokensList vector
+                TokensList tokenEntry;
+                istringstream ss(line);
+                getline(ss, tokenEntry.token, '\t');
+                getline(ss, tokenEntry.type, '\t');
                 tokensList.push_back(tokenEntry);
             }
             else if(kind == "symbol"){
-                // Add the symbol to the tokensList vector
-                
+                SymbolTable symbolEntry;
+                istringstream ss(line);
+                getline(ss, symbolEntry.token, '\t');
+                getline(ss, symbolEntry.type, '\t');
+                getline(ss, symbolEntry.address, '\t');
+                getline(ss, symbolEntry.segment, '\t');
+                getline(ss, symbolEntry.value, '\t');
+                symbolTable.push_back(symbolEntry);
             }
             else{
                 cout << "Invalid input kind" << endl;
@@ -86,7 +92,17 @@ void readTxt(string txtFile, string kind){
 
 
 
-string quadGen(vector<TokensList> symbolTable) {
+int lCount = 0;
+void setlCount(int value) {
+    lCount = value;
+}
+string getlCount() {
+    return "L" + to_string(lCount);
+}
+
+
+
+string quadGen(vector<TokensList> tokensList){
     stack<string> myStack;
     int tableLocOfLastOp = 1;
     int tableLocOfCurrentOp = 1;
@@ -98,15 +114,44 @@ string quadGen(vector<TokensList> symbolTable) {
     bool invalid; //for testing
     bool conditionalStatement = false;
     bool isConstOrVar = false;
+    bool className = false;
+    bool CIN_COUT = false;
+    int lCount = 0;
 
-    for (int i = 0; i < symbolTable.size(); i++) {
-        token = symbolTable[i].token;
+    for(int i = 0; i < tokensList.size(); i++){
+        token = tokensList[i].token;
 
         if(token == "CONST" || token == "VAR"){
             isConstOrVar = true;
         }
-        if (token == "=" || token == "+" || token == "-" || token == "(" || token == ")" || token == "*" || token == "/" || token == "IF" || token == "THEN" || token == "==" || token == "!=" || token == ">" || token == "<" || token == ">=" || token == "<=" || token == "{" || token == "}" || token == ";") {
+
+        if(className == true){
+            className = false;
+        }
+        else if(token == "CLASS"){
+            className = true;
+        }
+        else if(token == "CIN"){
+            CIN_COUT = true;
+            quad += "CIN, " + tokensList[i+1].token + "\n";
+        }
+        else if(token == "COUT"){
+            CIN_COUT = true;
+            quad += "COUT, " + tokensList[i+1].token + "\n";
+        }
+        else if(CIN_COUT == true){
+            CIN_COUT = false;
+            i += 1;
+        }
+        else if(token == "{" || token == "}"){
+        }
+        else if(token == "=" || token == "+" || token == "-" || token == "(" || token == ")" || token == "*" || token == "/" || token == "IF" || token == "THEN" || token == "==" || token == "!=" || token == ">" || token == "<" || token == ">=" || token == "<=" || token == ";"){
             if(currentOp == ")"){
+                currentOp = token;
+            }
+            else if(currentOp == ";" && myStack.size() == 0){
+                lastOp = "⊥";
+                tableLocOfLastOp = 1;
                 currentOp = token;
             }
             else{
@@ -162,7 +207,7 @@ string quadGen(vector<TokensList> symbolTable) {
                 myStack.push(token);
                 tableLocOfLastOp = tableLocOfCurrentOp;
             }
-            else if(precedence[0] == 62) { //if precedence == ">"
+            else if(precedence[0] == 62){ //if precedence == ">"
                 bool tokenPushed = false;
                 bool parenthesesHit = false;
 
@@ -212,9 +257,9 @@ string quadGen(vector<TokensList> symbolTable) {
                             conditionalStatement = true;
                         }
                         
-                        stack<string> tempStack; // Create a temporary stack to find the operator
+                        stack<string> tempStack; //temporary stack to find the top operator
                         tempStack = myStack;
-                        while (!tempStack.empty()) {
+                        while(!tempStack.empty()){
                             string top = tempStack.top();
                             tempStack.pop();
                             if(top == "="){
@@ -284,7 +329,8 @@ string quadGen(vector<TokensList> symbolTable) {
                             myStack.pop();
                             tableLocOfLastOp = 1;
                             conditionalStatement = false;
-                            quad += "nop\n";
+                            setlCount(++lCount);
+                            quad += getlCount() + "\n";
                         }
 
                         precedence = string(1, csvPrec[tableLocOfLastOp][tableLocOfCurrentOp][0]);
@@ -299,7 +345,13 @@ string quadGen(vector<TokensList> symbolTable) {
                                 myStack.pop();
                                 lastOp = myStack.top();
                                 myStack.push(varInsideParentheses);
-                                if(lastOp == "="){
+                                if(myStack.size() == 0){
+                                    tableLocOfLastOp = 1;
+                                    tableLocOfCurrentOp = 1;
+                                    parenthesesHit = true;
+                                    break;
+                                }
+                                else if(lastOp == "="){
                                     tableLocOfLastOp = 2;
                                     tableLocOfCurrentOp = 2;
                                     parenthesesHit = true;
@@ -399,7 +451,7 @@ string quadGen(vector<TokensList> symbolTable) {
                     tableLocOfLastOp = tableLocOfCurrentOp;
                 }
             } //end else if(precedence ">")
-            else {
+            else{
                 cout << "Invalid operator precedence" << endl;
                 invalid = true; //variable for debugging. does not serve a logical function
             }
@@ -414,87 +466,253 @@ string quadGen(vector<TokensList> symbolTable) {
 
 
 
-void assemblyConvert(string outputQuad) {
+string assemblyConvert(string outputQuad){
     istringstream ss(outputQuad);
     string line;
+    string assembly = "";
+    int assemblylCount = 0;
 
-    while (getline(ss, line)) {
+    while(getline(ss, line)){
         string op, leftOperand, rightOperand, result;
         istringstream ss_line(line);
 
         getline(ss_line, op, ',');
-        getline(ss_line >> std::ws, leftOperand, ',');
-        getline(ss_line >> std::ws, rightOperand, ',');
-        getline(ss_line >> std::ws, result);
+        getline(ss_line >> ws, leftOperand, ',');
+        getline(ss_line >> ws, rightOperand, ',');
+        getline(ss_line >> ws, result);
 
-        if(op == "="){
-            cout << "mov ax,[" << rightOperand << "]" << endl;
-            cout << "mov [" << leftOperand << "],ax" << endl;
+        if(op == "CIN"){
+            if(isdigit(leftOperand.at(0))){
+                assembly += "call PrintString\ncall GetAnInteger\nmov ax,[ReadInt]\nmov " + leftOperand + ", ax\n";
+            }
+            else{
+                assembly += "call PrintString\ncall GetAnInteger\nmov ax,[ReadInt]\nmov [" + leftOperand + "], ax\n";
+            }
+            assembly += "\n";
         }
-        else if(op == "nop"){
-            cout << "nop" << endl;
+        else if(op == "COUT"){
+            if(isdigit(leftOperand.at(0))){
+                assembly += "mov ax," + leftOperand + "\ncall ConvertIntegerToString\nmov eax, 4\nmov ebx, 1\nmov ecx, Result\nmov edx, ResultEnd\nint 80h\n";
+            }
+            else{
+                assembly += "mov ax,[" + leftOperand + "]\ncall ConvertIntegerToString\nmov eax, 4\nmov ebx, 1\nmov ecx, Result\nmov edx, ResultEnd\nint 80h\n";
+            }
+            assembly += "\n";
+        }
+        else if(op == "="){
+            if((isdigit(rightOperand.at(0))) && (isdigit(leftOperand.at(0)))){
+                assembly += "mov ax," + rightOperand + "\nmov " + leftOperand + ",ax\n";
+            }
+            else if((isdigit(rightOperand.at(0))) && (!isdigit(leftOperand.at(0)))){
+                assembly += "mov ax," + rightOperand + "\nmov [" + leftOperand + "],ax\n";
+            }
+            else if((!isdigit(rightOperand.at(0))) && (isdigit(leftOperand.at(0)))){
+                assembly += "mov ax,[" + rightOperand + "]\nmov " + leftOperand + ",ax\n";
+            }
+            else{
+                assembly += "mov ax,[" + rightOperand + "]\nmov [" + leftOperand + "],ax\n";
+            }
+            assembly += "\n";
+        }
+        else if(op.substr(0, 1) == "L" && op.length() == 2 && isupper(op[0])) {
+            assembly += "L" + string(1, op[1]) + ": nop\n\n";
         }
         else if(op == "+"){
-            cout << "mov ax,[" << leftOperand << "]" << endl;
-            cout << "add ax,[" << rightOperand << "]" << endl;
-            cout << "mov [" << result << "],ax" << endl;
+            if((isdigit(leftOperand.at(0))) && (isdigit(rightOperand.at(0)))){
+                assembly += "mov ax," + leftOperand + "\nadd ax," + rightOperand + "\nmov [" + result + "],ax\n";
+            }
+            else if((isdigit(leftOperand.at(0))) && (!isdigit(rightOperand.at(0)))){
+                assembly += "mov ax," + leftOperand + "\nadd ax,[" + rightOperand + "]\nmov [" + result + "],ax\n";
+            }
+            else if((!isdigit(leftOperand.at(0))) && (isdigit(rightOperand.at(0)))){
+                assembly += "mov ax,[" + leftOperand + "]\nadd ax," + rightOperand + "\nmov [" + result + "],ax\n";
+            }
+            else{
+                assembly += "mov ax,[" + leftOperand + "]\nadd ax,[" + rightOperand + "]\nmov [" + result + "],ax\n";
+            }
+            assembly += "\n";
         }
         else if(op == "-"){
-            cout << "mov ax,[" << leftOperand << "]" << endl;
-            cout << "sub ax,[" << rightOperand << "]" << endl;
-            cout << "mov [" << result << "],ax" << endl;
+            if((isdigit(leftOperand.at(0))) && (isdigit(rightOperand.at(0)))){
+                assembly += "mov ax," + leftOperand + "\nadd ax," + rightOperand + "\nmov [" + result + "],ax\n";
+            }
+            else if((isdigit(leftOperand.at(0))) && (!isdigit(rightOperand.at(0)))){
+                assembly += "mov ax," + leftOperand + "\nsub ax,[" + rightOperand + "]\nmov [" + result + "],ax\n";
+            }
+            else if((!isdigit(leftOperand.at(0))) && (isdigit(rightOperand.at(0)))){
+                assembly += "mov ax,[" + leftOperand + "]\nsub ax," + rightOperand + "\nmov [" + result + "],ax\n";
+            }
+            else{
+                assembly += "mov ax,[" + leftOperand + "]\nsub ax,[" + rightOperand + "]\nmov [" + result + "],ax\n";
+            }
+            assembly += "\n";
         }
         else if(op == "*"){
-            cout << "mov ax,[" << leftOperand << "]" << endl;
-            cout << "mul [" << rightOperand << "]" << endl;
-            cout << "mov [" << result << "],ax" << endl;
+            if((isdigit(leftOperand.at(0))) && (isdigit(rightOperand.at(0)))){
+                assembly += "mov ax," + leftOperand + "\nmov bx," + rightOperand + "\nmul bx\nmov [" + result + "],ax\n";
+            }
+            else if((isdigit(leftOperand.at(0))) && (!isdigit(rightOperand.at(0)))){
+                assembly += "mov ax," + leftOperand + "\nmov bx,[" + rightOperand + "]\nmul bx\nmov [" + result + "],ax\n";
+            }
+            else if((!isdigit(leftOperand.at(0))) && (isdigit(rightOperand.at(0)))){
+                assembly += "mov ax,[" + leftOperand + "]\nmov bx," + rightOperand + "\nmul bx\nmov [" + result + "],ax\n";
+            }
+            else{
+                assembly += "mov ax,[" + leftOperand + "]\nmov bx,[" + rightOperand + "]\nmul bx\nmov [" + result + "],ax\n";
+            }
+            assembly += "\n";
         }
         else if(op == "/"){
-            cout << "mov dx,0" << endl;
-            cout << "mov ax,[" << leftOperand << "]" << endl;
-            cout << "mov bx,[" << rightOperand << "]" << endl;
-            cout << "div bx" << endl;
-            cout << "mov [" << result << "],ax" << endl;
+            if((isdigit(leftOperand.at(0))) && (isdigit(rightOperand.at(0)))){
+                assembly += "mov dx,0\nmov ax," + leftOperand + "\nmov bx," + rightOperand + "\ndiv bx\nmov [" + result + "],ax\n";
+            }
+            else if((isdigit(leftOperand.at(0))) && (!isdigit(rightOperand.at(0)))){
+                assembly += "mov dx,0\nmov ax," + leftOperand + "\nmov bx,[" + rightOperand + "]\ndiv bx\nmov [" + result + "],ax\n";
+            }
+            else if((!isdigit(leftOperand.at(0))) && (isdigit(rightOperand.at(0)))){
+                assembly += "mov dx,0\nmov ax,[" + leftOperand + "]\nmov bx," + rightOperand + "\ndiv bx\nmov [" + result + "],ax\n";
+            }
+            else{
+                assembly += "mov dx,0\nmov ax,[" + leftOperand + "]\nmov bx,[" + rightOperand + "]\ndiv bx\nmov [" + result + "],ax\n";
+            }
+            assembly += "\n";
         }
         else if(op == "=="){
-            cout << "mov ax,[" << leftOperand << "]" << endl;
-            cout << "cmp ax,[" << rightOperand << "]" << endl;
-            cout << "JLE " << "L1" << endl; //If comparison is FALSE, skip to location L1. Need to make it so that L1 is not hard coded
+            if((isdigit(leftOperand.at(0))) && (isdigit(rightOperand.at(0)))){
+                assembly += "mov ax," + leftOperand + "\ncmp ax," + rightOperand + "\nJNE " + to_string(++assemblylCount) + "\n";
+            }
+            else if((isdigit(leftOperand.at(0))) && (!isdigit(rightOperand.at(0)))){
+                assembly += "mov ax," + leftOperand + "\ncmp ax,[" + rightOperand + "]\nJNE " + to_string(++assemblylCount) + "\n";
+            }
+            else if((!isdigit(leftOperand.at(0))) && (isdigit(rightOperand.at(0)))){
+                assembly += "mov ax,[" + leftOperand + "]\ncmp ax," + rightOperand + "\nJNE " + to_string(++assemblylCount) + "\n";
+            }
+            else{
+                assembly += "mov ax,[" + leftOperand + "]\ncmp ax,[" + rightOperand + "]\nJNE " + to_string(++assemblylCount) + "\n";
+            }
+            assembly += "\n";
         }
         else if(op == "!="){
-            cout << "mov ax,[" << leftOperand << "]" << endl;
-            cout << "cmp ax,[" << rightOperand << "]" << endl;
-            cout << "JLE " << "L1" << endl; //If comparison is FALSE, skip to location L1. Need to make it so that L1 is not hard coded
+            if((isdigit(leftOperand.at(0))) && (isdigit(rightOperand.at(0)))){
+                assembly += "mov ax," + leftOperand + "\ncmp ax," + rightOperand + "\nJE " + to_string(++assemblylCount) + "\n";
+            }
+            else if((isdigit(leftOperand.at(0))) && (!isdigit(rightOperand.at(0)))){
+                assembly += "mov ax," + leftOperand + "\ncmp ax,[" + rightOperand + "]\nJE " + to_string(++assemblylCount) + "\n";
+            }
+            else if((!isdigit(leftOperand.at(0))) && (isdigit(rightOperand.at(0)))){
+                assembly += "mov ax,[" + leftOperand + "]\ncmp ax," + rightOperand + "\nJE " + to_string(++assemblylCount) + "\n";
+            }
+            else{
+                assembly += "mov ax,[" + leftOperand + "]\ncmp ax,[" + rightOperand + "]\nJE " + to_string(++assemblylCount) + "\n";
+            }
+            assembly += "\n";
         }
         else if(op == ">"){
-            cout << "mov ax,[" << leftOperand << "]" << endl;
-            cout << "cmp ax,[" << rightOperand << "]" << endl;
-            cout << "JLE " << "L1" << endl; //If comparison is FALSE, skip to location L1. Need to make it so that L1 is not hard coded
+            if((isdigit(leftOperand.at(0))) && (isdigit(rightOperand.at(0)))){
+                assembly += "mov ax," + leftOperand + "\ncmp ax," + rightOperand + "\nJLE " + to_string(++assemblylCount) + "\n";
+            }
+            else if((isdigit(leftOperand.at(0))) && (!isdigit(rightOperand.at(0)))){
+                assembly += "mov ax," + leftOperand + "\ncmp ax,[" + rightOperand + "]\nJLE " + to_string(++assemblylCount) + "\n";
+            }
+            else if((!isdigit(leftOperand.at(0))) && (isdigit(rightOperand.at(0)))){
+                assembly += "mov ax,[" + leftOperand + "]\ncmp ax," + rightOperand + "\nJLE " + to_string(++assemblylCount) + "\n";
+            }
+            else{
+                assembly += "mov ax,[" + leftOperand + "]\ncmp ax,[" + rightOperand + "]\nJLE " + to_string(++assemblylCount) + "\n";
+            }
+            assembly += "\n";
         }
         else if(op == "<"){
-            cout << "mov ax,[" << leftOperand << "]" << endl;
-            cout << "cmp ax,[" << rightOperand << "]" << endl;
-            cout << "JLE " << "L1" << endl; //If comparison is FALSE, skip to location L1. Need to make it so that L1 is not hard coded
+            if((isdigit(leftOperand.at(0))) && (isdigit(rightOperand.at(0)))){
+                assembly += "mov ax," + leftOperand + "\ncmp ax," + rightOperand + "\nJGE " + to_string(++assemblylCount) + "\n";
+            }
+            else if((isdigit(leftOperand.at(0))) && (!isdigit(rightOperand.at(0)))){
+                assembly += "mov ax," + leftOperand + "\ncmp ax,[" + rightOperand + "]\nJGE " + to_string(++assemblylCount) + "\n";
+            }
+            else if((!isdigit(leftOperand.at(0))) && (isdigit(rightOperand.at(0)))){
+                assembly += "mov ax,[" + leftOperand + "]\ncmp ax," + rightOperand + "\nJGE " + to_string(++assemblylCount) + "\n";
+            }
+            else{
+                assembly += "mov ax,[" + leftOperand + "]\ncmp ax,[" + rightOperand + "]\nJGE " + to_string(++assemblylCount) + "\n";
+            }
+            assembly += "\n";
         }
         else if(op == ">="){
-            cout << "mov ax,[" << leftOperand << "]" << endl;
-            cout << "cmp ax,[" << rightOperand << "]" << endl;
-            cout << "JLE " << "L1" << endl; //If comparison is FALSE, skip to location L1. Need to make it so that L1 is not hard coded
+            if((isdigit(leftOperand.at(0))) && (isdigit(rightOperand.at(0)))){
+                assembly += "mov ax," + leftOperand + "\ncmp ax," + rightOperand + "\nJL " + to_string(++assemblylCount) + "\n";
+            }
+            else if((isdigit(leftOperand.at(0))) && (!isdigit(rightOperand.at(0)))){
+                assembly += "mov ax," + leftOperand + "\ncmp ax,[" + rightOperand + "]\nJL " + to_string(++assemblylCount) + "\n";
+            }
+            else if((!isdigit(leftOperand.at(0))) && (isdigit(rightOperand.at(0)))){
+                assembly += "mov ax,[" + leftOperand + "]\ncmp ax," + rightOperand + "\nJL " + to_string(++assemblylCount) + "\n";
+            }
+            else{
+                assembly += "mov ax,[" + leftOperand + "]\ncmp ax,[" + rightOperand + "]\nJL " + to_string(++assemblylCount) + "\n";
+            }
+            assembly += "\n";
         }
         else if(op == "<="){
-            cout << "mov ax,[" << leftOperand << "]" << endl;
-            cout << "cmp ax,[" << rightOperand << "]" << endl;
-            cout << "JLE " << "L1" << endl; //If comparison is FALSE, skip to location L1. Need to make it so that L1 is not hard coded
-        }
-        else if (op == "}"){
-            cout << "END " << "programname" << endl;
+            if((isdigit(leftOperand.at(0))) && (isdigit(rightOperand.at(0)))){
+                assembly += "mov ax," + leftOperand + "\ncmp ax," + rightOperand + "\nJG " + to_string(++assemblylCount) + "\n";
+            }
+            else if((isdigit(leftOperand.at(0))) && (!isdigit(rightOperand.at(0)))){
+                assembly += "mov ax," + leftOperand + "\ncmp ax,[" + rightOperand + "]\nJG " + to_string(++assemblylCount) + "\n";
+            }
+            else if((!isdigit(leftOperand.at(0))) && (isdigit(rightOperand.at(0)))){
+                assembly += "mov ax,[" + leftOperand + "]\ncmp ax," + rightOperand + "\nJG " + to_string(++assemblylCount) + "\n";
+            }
+            else{
+                assembly += "mov ax,[" + leftOperand + "]\ncmp ax,[" + rightOperand + "]\nJG " + to_string(++assemblylCount) + "\n";
+            }
+            assembly += "\n";
         }
     }
+    assembly += "int 0x80\nmov ebx,0\nmov eax,1\nint 0x80\n";
+
+    return assembly;
 }
 
 
 
-int main() {
+string IO_File(string assemblyCode, vector<SymbolTable> symbolTable){
+    string dataSection = "";
+    for(int i = 0; i < symbolTable.size(); i++){
+        if(symbolTable[i].type == "CONST" || symbolTable[i].type == "VAR"){
+            dataSection += "\t" + symbolTable[i].token + "\t" + "DW" + "\t" + symbolTable[i].value + "\n";
+        }
+    }
+
+    string IO_Output = "";
+    IO_Output = 
+    "sys_exit\tequ\t1\nsys_read\tequ\t3\nsys_write\tequ\t4\nstdin\tequ\t0\nstdout\tequ\t1\nstderr\tequ\t3\n\n"
+
+    //.data section
+    "section .data\nuserMsg db 'Enter an input: '\nlenUserMsg equ $-userMsg\ndisplayMsg db 'You entered: '\nlenDisplayMsg equ $-displayMsg\nnewline db 0xA\n"
+    "printTempchar db 'Tempchar = : '\nlenprintTempchar equ $-printTempchar\nResult db 'Answer: '\nResultValue db 'aaaaa'\ndb 0xA\nResultEnd equ $-Result\n"
+    "num times 6 db 'ABCDEF'\nnumEnd equ $-num\n" + dataSection + "\n"
+
+    "section\t.bss\n\n\tTempChar\tRESW\t1\n\ttestchar\tRESW\t1\n\tReadInt\tRESW\t1\n\ttempint\tRESW\t1\n\tnegflag\tRESW\t1\n"
+    "T1\tRESW\t1\nT2\tRESW\t1\nT3\tRESW\t1\nT4\tRESW\t1\nT5\tRESW\t1\nT6\tRESW\t1\nT7\tRESW\t1\nT8\tRESW\t1\nT9\tRESW\t1\nT10\tRESW\t1\nglobal _start\n"
+
+    //.start_ section
+    "section .text\n\n_start:\n" + assemblyCode + "\n"
+
+    "fini:\n\tmov eax,sys_exit\n\txor ebx,ebx\n\tint 80h\n\n"
+    "PrintString:\n\tpush\tax\n\tpush\tdx\n\tmov eax, 4\n\tmov ebx, 1\n\tmov ecx, userMsg\n\tmov edx, lenUserMsg\n\tint\t80h\n\tpop\tdx\n\tpop\tax\n\tret\n\n"
+    "GetAnInteger:\n\tmov eax,3\n\tmov ebx,2\n\tmov ecx,num\n\tmov edx,6\n\tint 0x80\n\n\tmov edx,eax\n\tmov eax, 4\n\tmov ebx, 1\n\tmov ecx, num\n\tint 80h\n\n"
+
+    "ConvertStringToInteger:\n\tmov ax,0\n\tmov [ReadInt],ax\n\tmov ecx,num\n\n\tmov bx,0\n\tmov bl, byte [ecx]\nNext:\tsub bl,'0'\n\tmov ax,[ReadInt]\n\tmov dx,10\n\t"
+	"mul dx\n\tadd ax,bx\n\tmov [ReadInt], ax\n\n\tmov bx,0\n\tadd ecx,1\n\tmov bl, byte[ecx]\n\n\tcmp bl,0xA\n\tjne Next\n\tret\n\n"
+
+    "ConvertIntegerToString:\n\tmov ebx, ResultValue + 4\n\nConvertLoop:\n\tsub dx,dx\n\tmov cx,10\n\tdiv cx\n\tadd dl,'0'\n\tmov [ebx], dl\n\tdec ebx\n\tcmp ebx,ResultValue\n\tjge ConvertLoop\n\n\tret";
+
+    return IO_Output;
+}
+
+
+
+int main(){
 
     readCSV("CompilerTable.csv", "Data");
     readCSV("ReservedWords.csv", "Reserved");
@@ -505,7 +723,14 @@ int main() {
     string outputQuad = quadGen(tokensList);
     cout << outputQuad << endl;
 
-    assemblyConvert(outputQuad);
+    string assemblyCode = assemblyConvert(outputQuad);
+
+    cout << assemblyCode << endl;
+
+    ofstream ioF("IO1Nasm32.asm");
+    string out = IO_File(assemblyCode, symbolTable);
+    ioF << out;
+    ioF.close();
 
     return 0;
 }
