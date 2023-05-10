@@ -1,9 +1,3 @@
-/*
-Problems:
-
-*/
-
-
 #include <iostream>
 #include <string>
 #include <vector>
@@ -87,23 +81,14 @@ vector<pair<string, string> > tokenizer(string input){
                         tokens.push_back(pair<string, string>(token, "$THEN"));
                     }
                     else if(token == csvRW[5]){
-                        tokens.push_back(pair<string, string>(token, "$PROCEDURE"));
-                    }
-                    else if(token == csvRW[6]){
-                        tokens.push_back(pair<string, string>(token, "$WHILE"));
-                    }
-                    else if(token == csvRW[7]){
-                        tokens.push_back(pair<string, string>(token, "$CALL"));
-                    }
-                    else if(token == csvRW[8]){
-                        tokens.push_back(pair<string, string>(token, "$DO"));
-                    }
-                    else if(token == csvRW[9]){
-                        tokens.push_back(pair<string, string>(token, "$ODD"));
-                    }
-                    else if(token == csvRW[10]){
                         tokens.push_back(pair<string, string>(token, "$CLASS"));
                         isProgramName = true;
+                    }
+                    else if(token == csvRW[6]){
+                        tokens.push_back(pair<string, string>(token, "$CIN"));
+                    }
+                    else if(token == csvRW[7]){
+                        tokens.push_back(pair<string, string>(token, "$COUT"));
                     }
                     else{
                         if(isProgramName == true){
@@ -317,6 +302,7 @@ vector<Symbol> createSymbolTable(vector<pair<string, string> > tokens){
 
     int address = 0;
     bool initialValue = false;
+    bool constVal = false;
 
     for(int i = 0; i < tokens.size(); i++){
         string tokenStr = tokens[i].first;
@@ -324,9 +310,11 @@ vector<Symbol> createSymbolTable(vector<pair<string, string> > tokens){
         string addressStr = to_string(address);
         string val = "";
         
-        //creates a new symbol and adds it to the symbol table
-        if(typeStr == "$CLASS" || typeStr == "$VAR" || typeStr == "$CONST" || tokenStr == "=" || tokenStr == "+" || tokenStr == "-" || tokenStr == "(" || tokenStr == ")" || tokenStr == "*" || tokenStr == "/" || tokenStr == "IF" || tokenStr == "THEN" || tokenStr == "==" || tokenStr == "!=" || tokenStr == ">" || tokenStr == "<" || tokenStr == ">=" || tokenStr == "<=" || tokenStr == "{" || tokenStr == "}" || tokenStr == ";"){
-            //exlude from symbol table
+        if(typeStr == "$CLASS" || typeStr == "$VAR" || typeStr == "$CONST" || typeStr == "$CIN" || typeStr == "$COUT"|| tokenStr == "=" || tokenStr == "+" || tokenStr == "-" || tokenStr == "(" || tokenStr == ")" || tokenStr == "*" || tokenStr == "/" || tokenStr == "IF" || tokenStr == "THEN" || tokenStr == "==" || tokenStr == "!=" || tokenStr == ">" || tokenStr == "<" || tokenStr == ">=" || tokenStr == "<=" || tokenStr == "{" || tokenStr == "}" || tokenStr == ";"){
+            //exclude from symbol table
+        }
+        else if(constVal == true){
+            constVal = false;
         }
         else if(typeStr == "PGM NAME"){
             Symbol symbol = {tokenStr, typeStr, addressStr, "CS", ""};
@@ -355,6 +343,7 @@ vector<Symbol> createSymbolTable(vector<pair<string, string> > tokens){
                         Symbol symbol = {tokenStr, "CONST", addressStr, "DS", tokens[i+2].first};
                         symbolTable.push_back(symbol);
                         address = address + 2;
+                        constVal = true;
                 }
 
                 //adds token to symbol table
@@ -411,21 +400,19 @@ int main(){
     }
     inputFile.close();
     
-    //Lexical
+    //lexical
     vector<pair<string, string> > tokensList;
     pair<string, string> tokenPair;
     tokensList = tokenizer(input);
     vector<Symbol> symbolTableResult = createSymbolTable(tokensList);
 
-    // Output to tokensList.txt
-    ofstream tokensFile("tokensList.txt");
+    ofstream tokensFile("tokensList.txt"); //output to tokensList.txt
     for(const auto& tokenPair : tokensList){
         tokensFile << tokenPair.first << "\t" << " : " << "\t" << tokenPair.second << endl;
     }
     tokensFile.close();
 
-    // Output to symbolTable.txt
-    ofstream symbolTableFile("symbolTable.txt");
+    ofstream symbolTableFile("symbolTable.txt"); //output to symbolTable.txt
     for(const auto& symbol : symbolTableResult){
         symbolTableFile << symbol.token << "\t" << symbol.type << "\t" << symbol.address << "\t" << symbol.segment << "\t" << symbol.value << endl;
     }
