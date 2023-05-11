@@ -1,1 +1,1 @@
-This is a table-driven, two-pass compiler that I have created for a simple programming language. As of now, it supports arithmetic and relational operations, conditional statements, comment blocks, VAR and CONST data types, and more.
+This is a table-driven, two-pass compiler that I have created for a simple programming language. As of now, it supports arithmetic and relational operations, conditional statements, comment blocks, VAR and CONST data types, and more. It compiles to NASM assembly, which runs on 32-bit and 64-bit architectures.
